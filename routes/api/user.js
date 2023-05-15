@@ -76,12 +76,12 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { firstName, lastName, email, role, userId } = req.body;
+    const { firstName, lastName, phoneNumber, role, userId } = req.body;
 
     const password = "";
 
     try {
-      let user = await User.findOne({ email });
+      let user = await User.findOne({ phoneNumber });
 
       if (user) {
         return res.status(401).json({ error: "User already exists" });
@@ -100,7 +100,7 @@ router.post(
       await user.save();
       res.status(200).json({ success: "User added with Success" });
 
-      User.findOne({ email: email }, function (error, userData) {
+      User.findOne({ phoneNumber: email }, function (error, userData) {
         if (!userData)
           return res.status(404).json({
             success: false,
@@ -112,20 +112,20 @@ router.post(
             secure: false,
             requireTLS: true,
             auth: {
-              user: `${process.env.EMAIL_USER}`,
-              pass: `${process.env.EMAIL_PASSWORD}`,
+              user: `${process.env.phoneNumber_USER}`,
+              pass: `${process.env.phoneNumber_PASSWORD}`,
             },
           });
           const secret = `${process.env.JWT_SECRET}` + userData.password;
           const payload = {
-            email: userData.email,
+            phoneNumber: userData.phoneNumber,
             id: userData.id,
           };
 
           const token = jwt.sign(payload, secret);
           var currentDateTime = new Date();
           var mailOptions = {
-            from: `${process.env.EMAIL_USER}`,
+            from: `${process.env.phoneNumber_USER}`,
             to: email,
             subject: "Password Reset",
             text: "Password Reset",
@@ -147,7 +147,7 @@ router.post(
          </p>
         </div>
      
-         <a style="margin-left:0px;margin-right:0px; margin-top:50px; margin-bottom:50px;background-color:#4368B1;color:white;padding-top:10px;padding-bottom:10px;border-color:#4368B1;padding-left:20px;padding-right:20px;border-radius: 2px;text-decoration: none;" href=${process.env.SAAS_DASH_APP}/change-password/${userData.email}/${token}>Créer un mot de passe</a>
+         <a style="margin-left:0px;margin-right:0px; margin-top:50px; margin-bottom:50px;background-color:#4368B1;color:white;padding-top:10px;padding-bottom:10px;border-color:#4368B1;padding-left:20px;padding-right:20px;border-radius: 2px;text-decoration: none;" href=${process.env.SAAS_DASH_APP}/change-password/${userData.phoneNumber}/${token}>Créer un mot de passe</a>
          <div style="background-color:#4368B1;color:white;padding:20px;margin-top:50px" width="200" >
          <div>
            <a href="https://www.linkedin.com/company/76978849/admin/" style="margin:10px"><img src="https://i.ibb.co/n0hB2qX/Group-2.png" alt="linkedin" border="0"></a>
@@ -163,7 +163,7 @@ router.post(
           transporter.sendMail(mailOptions, function (error, info) {
             if (err) throw err;
             User.updateOne(
-              { email: userData.email },
+              { phoneNumber: userData.phoneNumber },
               {
                 token: currentDateTime,
               },

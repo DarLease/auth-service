@@ -21,46 +21,38 @@ router.get("/", auth, async (req, res) => {
 
 // @route    POST api/auth
 
-router.post(
-  "/",
-  [check("email", "please enter valid mail").isEmail()],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(401).json({ errors: errors.array() });
-    }
-    const { password, email } = req.body;
+router.post("/", async (req, res) => {
+  const { password, phoneNumber } = req.body;
 
-    try {
-      let user = await User.findOne({ email });
-      if (!user) {
-        return res.status(401).json({ errors: [{ msg: "User not found" }] });
-      }
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ errors: [{ msg: "Invalid Password" }] });
-      }
-      const payload = {
-        user: {
-          _id: user.id,
-          verified: user.verified,
-        },
-      };
-
-      jwt.sign(
-        payload,
-        process.env.jwtSecret,
-        { expiresIn: 360000 },
-        (err, token) => {
-          if (err) throw err;
-          res.status(200).json({ token });
-        }
-      );
-    } catch (err) {
-      res.status(500).send(err.message);
+  try {
+    let user = await User.findOne({ phoneNumber });
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
     }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid Password" });
+    }
+    const payload = {
+      user: {
+        _id: user.id,
+        verified: user.verified,
+      },
+    };
+
+    jwt.sign(
+      payload,
+      process.env.jwtSecret,
+      { expiresIn: 360000 },
+      (err, token) => {
+        if (err) throw err;
+        res.status(200).json({ token });
+      }
+    );
+  } catch (err) {
+    res.status(500).send(err.message);
   }
-);
+});
 // Update profile
 
 router.put("/update/:id", async (req, res) => {
@@ -74,7 +66,7 @@ router.put("/update/:id", async (req, res) => {
     newUserDetails = {
       firstName: req.body.firstName,
       lastName: req.body.lastName,
-      email: req.body.email,
+      phoneNumber: req.body.phoneNumber,
       password: newPassword,
     };
     const user = await User.findOneAndUpdate(
@@ -91,40 +83,42 @@ router.put("/update/:id", async (req, res) => {
 
 //reset password
 router.post("/reset", function (req, res) {
-  User.findOne({ email: req.body.email }, function (error, userData) {
-    if (!userData)
-      return res.status(404).json({
-        success: false,
-      });
-    else {
-      var transporter = nodemailer.createTransport({
-        host: `${process.env.SMTP_HOST}`,
-        port: `${process.env.SMTP_PORT}`,
-        secure: false,
-        requireTLS: true,
-        auth: {
-          user: `${process.env.EMAIL_USER}`,
-          pass: `${process.env.EMAIL_PASSWORD}`,
-        },
-      });
+  User.findOne(
+    { phoneNumber: req.body.phoneNumber },
+    function (error, userData) {
+      if (!userData)
+        return res.status(404).json({
+          success: false,
+        });
+      else {
+        var transporter = nodemailer.createTransport({
+          host: `${process.env.SMTP_HOST}`,
+          port: `${process.env.SMTP_PORT}`,
+          secure: false,
+          requireTLS: true,
+          auth: {
+            user: `${process.env.phoneNumber_USER}`,
+            pass: `${process.env.phoneNumber_PASSWORD}`,
+          },
+        });
 
-      const secret = `${process.env.JWT_SECRET}` + userData.password;
-      const payload = {
-        email: userData.email,
-        id: userData.id,
-      };
+        const secret = `${process.env.JWT_SECRET}` + userData.password;
+        const payload = {
+          phoneNumber: userData.phoneNumber,
+          id: userData.id,
+        };
 
-      const token = jwt.sign(payload, secret, {
-        expiresIn: `${process.env.JWT_EXPIRATION_TIME}`,
-      });
+        const token = jwt.sign(payload, secret, {
+          expiresIn: `${process.env.JWT_EXPIRATION_TIME}`,
+        });
 
-      var currentDateTime = new Date();
-      var mailOptions = {
-        from: `${process.env.EMAIL_USER}`,
-        to: req.body.email,
-        subject: "Password Reset",
-        text: "Password Reset",
-        html: `
+        var currentDateTime = new Date();
+        var mailOptions = {
+          from: `${process.env.phoneNumber_USER}`,
+          to: req.body.phoneNumber,
+          subject: "Password Reset",
+          text: "Password Reset",
+          html: `
         <!DOCTYPE htmlPUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
         <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
          <head>
@@ -144,7 +138,7 @@ demande de changement de mot de passe, merci d'ignorer cet e-mail. Aucune modifi
          </p>
         </div>
      
-         <a style="margin-left:0px;margin-right:0px; margin-top:50px; margin-bottom:50px;background-color:#4368B1;color:white;padding-top:10px;padding-bottom:10px;border-color:#4368B1;padding-left:20px;padding-right:20px;border-radius: 2px;text-decoration: none;" href=${process.env.SAAS_DASH_APP}/change-password/${userData.email}/${token}>Réinitialiser le mot de passe</a>
+         <a style="margin-left:0px;margin-right:0px; margin-top:50px; margin-bottom:50px;background-color:#4368B1;color:white;padding-top:10px;padding-bottom:10px;border-color:#4368B1;padding-left:20px;padding-right:20px;border-radius: 2px;text-decoration: none;" href=${process.env.SAAS_DASH_APP}/change-password/${userData.phoneNumber}/${token}>Réinitialiser le mot de passe</a>
          <div style="background-color:#4368B1;color:white;padding:20px;margin-top:50px" width="200" >
          <div>
          <a href="https://www.linkedin.com/company/76978849/admin/" style="margin:10px"><img src="https://i.ibb.co/n0hB2qX/Group-2.png" alt="linkedin" border="0"></a>
@@ -156,46 +150,49 @@ demande de changement de mot de passe, merci d'ignorer cet e-mail. Aucune modifi
  </body>
  </html>
       `,
-      };
+        };
 
-      transporter.sendMail(mailOptions, function (error, info) {
-        if (error) res.send(error);
-        User.updateOne(
-          { email: userData.email },
-          {
-            token: currentDateTime,
-          },
-          { multi: true },
-          function (resp) {
-            return res.status(200).json({
-              success: true,
-              msg: info.response,
-              userlist: resp,
-            });
-          }
-        );
-      });
+        transporter.sendMail(mailOptions, function (error, info) {
+          if (error) res.send(error);
+          User.updateOne(
+            { phoneNumber: userData.phoneNumber },
+            {
+              token: currentDateTime,
+            },
+            { multi: true },
+            function (resp) {
+              return res.status(200).json({
+                success: true,
+                msg: info.response,
+                userlist: resp,
+              });
+            }
+          );
+        });
+      }
     }
-  });
+  );
 });
 
 router.get("/verifytoken/:email/:token", async (req, res) => {
-  User.findOne({ email: req.params.email }).then(async (userData) => {
-    const secret = `${process.env.JWT_SECRET}` + userData.password;
-    const token = req.params.token;
+  User.findOne({ phoneNumber: req.params.phoneNumber }).then(
+    async (userData) => {
+      const secret = `${process.env.JWT_SECRET}` + userData.password;
+      const token = req.params.token;
 
-    try {
-      const payload = jwt.verify(token, secret);
+      try {
+        const payload = jwt.verify(token, secret);
 
-      res.send("valid signature");
-    } catch (error) {
-      res.send(`${error.message}`);
+        res.send("valid signature");
+      } catch (error) {
+        res.send(`${error.message}`);
+      }
     }
-  });
+  );
 });
 
 router.post("/resetpassword", async (req, res) => {
-  User.findOne({ email: req.body.email }).then(async (userData) => {
+  User.findOne({ phoneNumber: req.body.phoneNumber }).then(async (userData) => {
     if (!userData) res.json("dosen't exixst");
     else {
       const secret = `${process.env.JWT_SECRET}` + userData.password;
@@ -235,7 +232,7 @@ router.post("/resetpassword", async (req, res) => {
 });
 
 router.post("/verifyaccount", async (req, res) => {
-  User.findOne({ email: req.body.email }).then(async (userData) => {
+  User.findOne({ phoneNumber: req.body.phoneNumber }).then(async (userData) => {
     console.log(req.body.verified);
     if (!userData) res.json("dosen't exixst");
     else {
